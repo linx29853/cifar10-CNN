@@ -18,6 +18,31 @@ python train.py --download --epochs 5
 
 `--check` 使用随机张量检查网络输出和损失接口，不更新参数。数据下载至 `data/`，首次训练使用 `--download`。默认批量大小为 64，Adam 学习率为 0.001。
 
+
+## Docker（CPU）
+
+在仓库根目录构建镜像并检查网络接口：
+
+```bash
+docker build -t cifar10-cnn:cpu .
+docker run --rm cifar10-cnn:cpu
+```
+
+镜像使用 Python 3.11，按 requirements.txt 安装 CPU 版 PyTorch 和 torchvision，无需在宿主机安装 Python 依赖。已在 Ubuntu 22.04.5、x86_64 上完成镜像构建和容器内 `--check` 验证；该检查不执行训练或参数更新。
+
+在 Linux 上训练并将数据和最佳模型保存在当前项目目录：
+
+```bash
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  --mount type=bind,source="$(pwd)",target=/app \
+  cifar10-cnn:cpu --download --epochs 5
+```
+
+挂载后使用当前目录中的 train.py。数据保存至 data/，模型保存至 cifar10-best.pt，容器退出后保留。Docker 内完整训练尚未验证；首次下载数据需要网络连接。本镜像不支持 GPU。
+
+.dockerignore 排除数据集、模型权重和本地环境，避免将它们发送到构建上下文。
+
 ## 数据与评估
 
 原始 CIFAR-10 训练集划分为 45,000 张训练图片和 5,000 张验证图片，划分种子为 42。原始 10,000 张测试图片用于最终评估。每轮输出训练与验证损失、准确率；验证准确率最高的模型保存为 `cifar10-best.pt`，训练结束后加载该模型进行测试。
